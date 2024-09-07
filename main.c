@@ -104,7 +104,6 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
     size_t bufSize = 1;
 
     size_t startPos = 0, endPos = 0;
-    // int wordStart = 0;
     char c;
 
     buf = (char *)realloc(buf, bufSize);
@@ -112,21 +111,6 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
 
     while (str[startPos] != '\n') {
         while ((c = str[endPos]) != ' ') {
-            // if (wordStart) {
-            //     char *tempBuf = (char *)realloc(buf, bufSize + 1);
-            //     if (tempBuf == NULL) {
-            //         free(buf);
-            //         perror("realloc");
-            //         return;
-            //     }
-            //
-            //     buf = tempBuf;
-            //     buf[bufSize - 1] = c;
-            //     buf[bufSize] = '\0';
-            //
-            //     ++bufSize;
-            // }
-            // else {
             if (c == '#') {
                 /*
                     * no implementation for macros
@@ -149,22 +133,6 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
 
                 ++bufSize;
             }
-            // check if the word starts with i.
-            // if ((c == 'i') && (startPos == endPos)) {
-            //     char *tempBuf = (char *)realloc(buf, bufSize + 1);
-            //     if (tempBuf == NULL) {
-            //         free(buf);
-            //         perror("realloc");
-            //         return;
-            //     }
-            //
-            //     buf = tempBuf;
-            //     buf[bufSize - 1] = c;
-            //     buf[bufSize] = '\0';
-            //
-            //     ++bufSize;
-            //     wordStart = 1;
-            // }
             
             endPos++;
         }
@@ -194,7 +162,6 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
         memset(buf, '\0', bufSize);
         buf = (char *)realloc(buf, 1);
 
-        // wordStart = 0;
         bufSize = 1;
         startPos = endPos + 1;
         endPos = startPos;
