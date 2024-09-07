@@ -28,7 +28,7 @@ typedef struct {
 #define INIT_RC_BUF { NULL, 0 }
 
 void appendLine(Read_Characters *buf, const char *str, ssize_t length);
-void tokenize(const char *str, Token *tokenBuf);
+void tokenize(const char *str, Token **tokenBuf);
 
 int main(int argc, char *argv[]) {
     
@@ -53,14 +53,25 @@ int main(int argc, char *argv[]) {
     ssize_t numOfCharRead;
 
     while ((numOfCharRead = getline(&line, &length, fp)) != -1) {
-        tokenize(line, tokenBuf);
+        tokenize(line, &tokenBuf);
         appendLine(&charBuf, line, numOfCharRead);
     }
 
-    // printf("%s\n", tokenBuf->value);
+    printf("%s\n", tokenBuf[0].value);
+    printf("%d\n", tokenBuf[0].tokenType);
 
-    free(charBuf.line);
-    free(line);
+    if (charBuf.line != NULL) {
+        free(charBuf.line);
+    } 
+    if (tokenBuf != NULL) {
+        if (tokenBuf->value != NULL) {
+            free(tokenBuf->value);
+        }
+        free(tokenBuf);
+    }
+    if (line != NULL) {
+        free(line);
+    }
     fclose(fp);
 
     return 0;
@@ -84,7 +95,7 @@ void appendLine(Read_Characters *buf, const char *str, ssize_t length) {
     buf->line[buf->len] = '\0';
 }
 
-void tokenize(const char *str, Token *tokenBuf) {
+void tokenize(const char *str, Token **tokenBuf) {
     char *buf = NULL;
     size_t bufSize = 1;
     static size_t tokenBufSize = 1;
@@ -95,10 +106,16 @@ void tokenize(const char *str, Token *tokenBuf) {
 
     buf = (char *)realloc(buf, bufSize);
     *buf = '\0';
+
     while (str[startPos] != '\n') {
         while ((c = str[endPos]) != ' ') {
             if (wordStart) {
                 char *tempBuf = (char *)realloc(buf, bufSize + 1);
+                if (tempBuf == NULL) {
+                    free(buf);
+                    perror("realloc");
+                    return;
+                }
 
                 buf = tempBuf;
                 buf[bufSize - 1] = c;
@@ -112,11 +129,17 @@ void tokenize(const char *str, Token *tokenBuf) {
                     * no implementation for macros
                     * return from the function telling no need to compile the macros
                     */
+                    free(buf);
                     return;
                 }
                 // check if the word starts with i.
                 if ((c == 'i') && (startPos == endPos)) {
                     char *tempBuf = (char *)realloc(buf, bufSize + 1);
+                    if (tempBuf == NULL) {
+                        free(buf);
+                        perror("realloc");
+                        return;
+                    }
 
                     buf = tempBuf;
                     buf[bufSize - 1] = c;
@@ -130,20 +153,32 @@ void tokenize(const char *str, Token *tokenBuf) {
         }
 
         if (!strcmp(buf, "int")) {
-            printf("Test");
-            Token *temp = (Token *)realloc(tokenBuf, sizeof(Token) * tokenBufSize); 
+            *tokenBuf = (Token *)realloc(*tokenBuf, sizeof(Token) * tokenBufSize);
+            if (*tokenBuf == NULL) {
+                free(buf);
+                perror("realloc");
+                return;
+            }
 
-            tokenBuf = temp;
-            tokenBuf[tokenBufSize - 1].tokenType = KEYWORD;
-            // tokenBuf ko value ko laagi memory initialize vayeko xaina. so seg fault aai rako xa.
-            strcpy(tokenBuf[tokenBufSize - 1].value , buf);
+            (*tokenBuf)[tokenBufSize - 1].value = NULL;
+            (*tokenBuf)[tokenBufSize - 1].value = (char *)realloc((*tokenBuf)[tokenBufSize - 1].value, bufSize);
+            if (((*tokenBuf)[tokenBufSize - 1].value) == NULL) {
+                free(buf);
+                perror("realloc");
+                return;
+            }
 
-        //     // printf("%s", tokenBuf->value);
-        //
-        //     ++tokenBufSize;
+            (*tokenBuf)[tokenBufSize - 1].tokenType = KEYWORD;
+            strcpy((*tokenBuf)[tokenBufSize - 1].value, buf);
+
+            ++tokenBufSize;
         }
 
+        memset(buf, '\0', bufSize);
+        buf = (char *)realloc(buf, 1);
+
         wordStart = 0;
+        bufSize = 1;
         startPos = endPos + 1;
         endPos = startPos;
     }
