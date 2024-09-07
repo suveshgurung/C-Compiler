@@ -47,17 +47,17 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    Token tokenBuf;
+    Token *tokenBuf = NULL;
     char *line = NULL;
     size_t length;
     ssize_t numOfCharRead;
 
     while ((numOfCharRead = getline(&line, &length, fp)) != -1) {
-        tokenize(line, &tokenBuf);
+        tokenize(line, tokenBuf);
         appendLine(&charBuf, line, numOfCharRead);
     }
 
-    // printf("%s", charBuf.line);
+    // printf("%s\n", tokenBuf->value);
 
     free(charBuf.line);
     free(line);
@@ -85,11 +85,68 @@ void appendLine(Read_Characters *buf, const char *str, ssize_t length) {
 }
 
 void tokenize(const char *str, Token *tokenBuf) {
-    size_t i = 0;
+    char *buf = NULL;
+    size_t bufSize = 1;
+    static size_t tokenBufSize = 1;
+
+    size_t startPos = 0, endPos = 0;
+    int wordStart = 0;
     char c;
-    while ((c = str[i]) != '\n') {
-        printf("%c", c);
-        ++i;
+
+    buf = (char *)realloc(buf, bufSize);
+    *buf = '\0';
+    while (str[startPos] != '\n') {
+        while ((c = str[endPos]) != ' ') {
+            if (wordStart) {
+                char *tempBuf = (char *)realloc(buf, bufSize + 1);
+
+                buf = tempBuf;
+                buf[bufSize - 1] = c;
+                buf[bufSize] = '\0';
+
+                ++bufSize;
+            }
+            else {
+                if (c == '#') {
+                    /*
+                    * no implementation for macros
+                    * return from the function telling no need to compile the macros
+                    */
+                    return;
+                }
+                // check if the word starts with i.
+                if ((c == 'i') && (startPos == endPos)) {
+                    char *tempBuf = (char *)realloc(buf, bufSize + 1);
+
+                    buf = tempBuf;
+                    buf[bufSize - 1] = c;
+                    buf[bufSize] = '\0';
+
+                    ++bufSize;
+                    wordStart = 1;
+                }
+            }
+            endPos++;
+        }
+
+        if (!strcmp(buf, "int")) {
+            printf("Test");
+            Token *temp = (Token *)realloc(tokenBuf, sizeof(Token) * tokenBufSize); 
+
+            tokenBuf = temp;
+            tokenBuf[tokenBufSize - 1].tokenType = KEYWORD;
+            // tokenBuf ko value ko laagi memory initialize vayeko xaina. so seg fault aai rako xa.
+            strcpy(tokenBuf[tokenBufSize - 1].value , buf);
+
+        //     // printf("%s", tokenBuf->value);
+        //
+        //     ++tokenBufSize;
+        }
+
+        wordStart = 0;
+        startPos = endPos + 1;
+        endPos = startPos;
     }
-    printf("\n");
+
+    free(buf);
 }
