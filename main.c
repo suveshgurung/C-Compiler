@@ -28,7 +28,7 @@ typedef struct {
 #define INIT_RC_BUF { NULL, 0 }
 
 void appendLine(Read_Characters *buf, const char *str, ssize_t length);
-void tokenize(const char *str, Token **tokenBuf);
+void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize);
 
 int main(int argc, char *argv[]) {
     
@@ -49,20 +49,24 @@ int main(int argc, char *argv[]) {
 
     Token *tokenBuf = NULL;
     char *line = NULL;
+    size_t tokenBufSize = 1;
     size_t length;
     ssize_t numOfCharRead;
 
     while ((numOfCharRead = getline(&line, &length, fp)) != -1) {
-        tokenize(line, &tokenBuf);
+        tokenize(line, &tokenBuf, &tokenBufSize);
         appendLine(&charBuf, line, numOfCharRead);
     }
 
     printf("%s\n", tokenBuf[0].value);
     printf("%d\n", tokenBuf[0].tokenType);
+    printf("%s\n", tokenBuf[1].value);
+    printf("%d\n", tokenBuf[1].tokenType);
 
+    // error handling so that if no memory is allocated, we would not be freeing null memory.
     if (charBuf.line != NULL) {
         free(charBuf.line);
-    } 
+    }
     if (tokenBuf != NULL) {
         if (tokenBuf->value != NULL) {
             free(tokenBuf->value);
@@ -95,13 +99,12 @@ void appendLine(Read_Characters *buf, const char *str, ssize_t length) {
     buf->line[buf->len] = '\0';
 }
 
-void tokenize(const char *str, Token **tokenBuf) {
+void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
     char *buf = NULL;
     size_t bufSize = 1;
-    static size_t tokenBufSize = 1;
 
     size_t startPos = 0, endPos = 0;
-    int wordStart = 0;
+    // int wordStart = 0;
     char c;
 
     buf = (char *)realloc(buf, bufSize);
@@ -109,7 +112,30 @@ void tokenize(const char *str, Token **tokenBuf) {
 
     while (str[startPos] != '\n') {
         while ((c = str[endPos]) != ' ') {
-            if (wordStart) {
+            // if (wordStart) {
+            //     char *tempBuf = (char *)realloc(buf, bufSize + 1);
+            //     if (tempBuf == NULL) {
+            //         free(buf);
+            //         perror("realloc");
+            //         return;
+            //     }
+            //
+            //     buf = tempBuf;
+            //     buf[bufSize - 1] = c;
+            //     buf[bufSize] = '\0';
+            //
+            //     ++bufSize;
+            // }
+            // else {
+            if (c == '#') {
+                /*
+                    * no implementation for macros
+                    * return from the function telling no need to compile the macros
+                    */
+                free(buf);
+                return;
+            }
+            else {
                 char *tempBuf = (char *)realloc(buf, bufSize + 1);
                 if (tempBuf == NULL) {
                     free(buf);
@@ -123,61 +149,52 @@ void tokenize(const char *str, Token **tokenBuf) {
 
                 ++bufSize;
             }
-            else {
-                if (c == '#') {
-                    /*
-                    * no implementation for macros
-                    * return from the function telling no need to compile the macros
-                    */
-                    free(buf);
-                    return;
-                }
-                // check if the word starts with i.
-                if ((c == 'i') && (startPos == endPos)) {
-                    char *tempBuf = (char *)realloc(buf, bufSize + 1);
-                    if (tempBuf == NULL) {
-                        free(buf);
-                        perror("realloc");
-                        return;
-                    }
-
-                    buf = tempBuf;
-                    buf[bufSize - 1] = c;
-                    buf[bufSize] = '\0';
-
-                    ++bufSize;
-                    wordStart = 1;
-                }
-            }
+            // check if the word starts with i.
+            // if ((c == 'i') && (startPos == endPos)) {
+            //     char *tempBuf = (char *)realloc(buf, bufSize + 1);
+            //     if (tempBuf == NULL) {
+            //         free(buf);
+            //         perror("realloc");
+            //         return;
+            //     }
+            //
+            //     buf = tempBuf;
+            //     buf[bufSize - 1] = c;
+            //     buf[bufSize] = '\0';
+            //
+            //     ++bufSize;
+            //     wordStart = 1;
+            // }
+            
             endPos++;
         }
 
-        if (!strcmp(buf, "int")) {
-            *tokenBuf = (Token *)realloc(*tokenBuf, sizeof(Token) * tokenBufSize);
+        if ((!strcmp(buf, "int")) || (!strcmp(buf, "main()"))) {
+            *tokenBuf = (Token *)realloc(*tokenBuf, sizeof(Token) * (*tokenBufSize));
             if (*tokenBuf == NULL) {
                 free(buf);
                 perror("realloc");
                 return;
             }
 
-            (*tokenBuf)[tokenBufSize - 1].value = NULL;
-            (*tokenBuf)[tokenBufSize - 1].value = (char *)realloc((*tokenBuf)[tokenBufSize - 1].value, bufSize);
-            if (((*tokenBuf)[tokenBufSize - 1].value) == NULL) {
+            (*tokenBuf)[(*tokenBufSize) - 1].value = NULL;
+            (*tokenBuf)[(*tokenBufSize) - 1].value = (char *)realloc((*tokenBuf)[(*tokenBufSize) - 1].value, bufSize);
+            if (((*tokenBuf)[(*tokenBufSize) - 1].value) == NULL) {
                 free(buf);
                 perror("realloc");
                 return;
             }
 
-            (*tokenBuf)[tokenBufSize - 1].tokenType = KEYWORD;
-            strcpy((*tokenBuf)[tokenBufSize - 1].value, buf);
+            (*tokenBuf)[(*tokenBufSize) - 1].tokenType = KEYWORD;
+            strcpy((*tokenBuf)[(*tokenBufSize) - 1].value, buf);
 
-            ++tokenBufSize;
+            ++(*tokenBufSize);
         }
 
         memset(buf, '\0', bufSize);
         buf = (char *)realloc(buf, 1);
 
-        wordStart = 0;
+        // wordStart = 0;
         bufSize = 1;
         startPos = endPos + 1;
         endPos = startPos;
