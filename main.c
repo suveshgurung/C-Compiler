@@ -7,9 +7,17 @@
 #include <stdio.h>
 
 typedef enum {
-    KEYWORD,
+    DATATYPE_INT,
+    MAIN,
+    OPEN_CURLY_BRACKET,
+    CLOSE_CURLY_BRACKET,
+    OPEN_SMALL_BRACKET,
+    CLOSE_SMALL_BRACKET,
+    PRINTF,
+    DOUBLE_QUOTES,
     STRING,
-    SPECIAL_CHARACTER
+    INT_VAL,
+    RETURN,
 } Token_List;
 
 /* structure to store the lines read */
@@ -20,7 +28,7 @@ typedef struct {
 
 /* structure which stores the tokens */
 typedef struct {
-    Token_List tokenType;   
+    Token_List tokenType;
     char *value;
 } Token;
 
@@ -57,11 +65,6 @@ int main(int argc, char *argv[]) {
         tokenize(line, &tokenBuf, &tokenBufSize);
         appendLine(&charBuf, line, numOfCharRead);
     }
-
-    printf("%s\n", tokenBuf[0].value);
-    printf("%d\n", tokenBuf[0].tokenType);
-    printf("%s\n", tokenBuf[1].value);
-    printf("%d\n", tokenBuf[1].tokenType);
 
     // error handling so that if no memory is allocated, we would not be freeing null memory.
     if (charBuf.line != NULL) {
@@ -110,7 +113,7 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
     *buf = '\0';
 
     while (str[startPos] != '\n') {
-        while ((c = str[endPos]) != ' ') {
+        while (((c = str[endPos]) != ' ') || ((c = str[endPos]) != '\n')) {
             if (c == '#') {
                 /*
                     * no implementation for macros
@@ -120,6 +123,12 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
                 return;
             }
             else {
+                // check if we have () after a function name.
+                if ((c == '(') && (str[endPos + 1] != ')')) {
+                    // TODO: implement ( paxi ko "" in printf.
+                    break;
+                }
+
                 char *tempBuf = (char *)realloc(buf, bufSize + 1);
                 if (tempBuf == NULL) {
                     free(buf);
@@ -137,6 +146,8 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
             endPos++;
         }
 
+        // printf("%s", buf);
+
         if ((!strcmp(buf, "int")) || (!strcmp(buf, "main()"))) {
             *tokenBuf = (Token *)realloc(*tokenBuf, sizeof(Token) * (*tokenBufSize));
             if (*tokenBuf == NULL) {
@@ -153,7 +164,7 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
                 return;
             }
 
-            (*tokenBuf)[(*tokenBufSize) - 1].tokenType = KEYWORD;
+            (*tokenBuf)[(*tokenBufSize) - 1].tokenType = DATATYPE_INT;
             strcpy((*tokenBuf)[(*tokenBufSize) - 1].value, buf);
 
             ++(*tokenBufSize);
@@ -169,3 +180,7 @@ void tokenize(const char *str, Token **tokenBuf, size_t *tokenBufSize) {
 
     free(buf);
 }
+
+// void appendToken(char *buf, size_t bufSize, Token **tokenBuf, size_t *tokenBufSize) {
+//
+// }
